@@ -1,8 +1,8 @@
+
 import { GoogleGenAI, Type } from '@google/genai';
-import { AnalysisSummary, Protocol, ChatMessage } from '../types';
+import { AnalysisSummary, Protocol, ChatMessage, Packet } from '../types';
 import { SAMPLE_PACKETS } from '../constants';
 
-// Fix: Initialize GoogleGenAI client as per guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const analysisSummarySchema = {
@@ -55,7 +55,7 @@ export const runAnalysis = async (tierId: 'quick' | 'standard' | 'comprehensive'
     console.log(`Running ${tierId} analysis with Gemini...`);
 
     const packetsToAnalyze = SAMPLE_PACKETS;
-    const packetsString = JSON.stringify(packetsToAnalyze.slice(0, 50), null, 2); // Use a sample for prompt brevity
+    const packetsString = JSON.stringify(packetsToAnalyze.slice(0, 50), null, 2);
 
     const prompt = `Analyze the following sample of packet capture data and provide a summary. The total packet count is ${packetsToAnalyze.length}.
 The data contains a list of network packets with properties like id, time, protocol, source, destination, size, and info.
@@ -98,24 +98,44 @@ Return the response in a JSON format matching the specified schema. For 'generat
     }
 };
 
-export const getChatResponse = async (history: ChatMessage[], analysisSummary: AnalysisSummary | null): Promise<string> => {
-    console.log("Getting chat response from Gemini for history:", history);
+export const getChatResponse = async (
+  history: ChatMessage[],
+  analysisSummary: AnalysisSummary | null,
+  filteredPackets: Packet[],
+  selectedPacket: Packet | null
+): Promise<string> => {
+    console.log("Getting chat response from Gemini with full context...");
     
     const formattedHistory = history.map(msg => `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.text}`).join('\n');
     const summaryString = analysisSummary ? JSON.stringify(analysisSummary, null, 2) : "No analysis has been run yet.";
+
+    const filteredPacketsSample = filteredPackets.slice(0, 25);
+    const filteredPacketsString = filteredPackets.length > 0
+        ? `The user is currently viewing a list of ${filteredPackets.length} packets. Here is a sample of the first ${filteredPacketsSample.length} packets:\n${JSON.stringify(filteredPacketsSample, null, 2)}`
+        : "No packets are currently displayed to the user.";
+
+    const selectedPacketString = selectedPacket
+        ? `The user has specifically selected the following packet:\n${JSON.stringify(selectedPacket, null, 2)}`
+        : "The user has not selected any specific packet.";
 
     const systemInstruction = `You are a helpful and knowledgeable Network Admin Assistant powered by Gemini. 
 You are assisting a user who is analyzing a packet capture file. 
 Your role is to answer questions about the network traffic, security risks, and provide recommendations based on the data.
 Be concise and clear in your answers. Use markdown for formatting, like **bolding** for emphasis.
 The user's chat history is provided below. Respond to the last user message.
-Use the provided analysis summary as the context for your answers.`;
+When answering, you MUST consider all available context: the overall analysis summary, the list of packets currently displayed on the user's screen, and the specific packet the user has selected (if any). The user's question is likely related to what they are currently seeing.`;
 
     const contents = `
-CONTEXT: ANALYSIS SUMMARY
+CONTEXT: OVERALL ANALYSIS SUMMARY
 \`\`\`json
 ${summaryString}
 \`\`\`
+
+CONTEXT: CURRENTLY DISPLAYED PACKETS
+${filteredPacketsString}
+
+CONTEXT: CURRENTLY SELECTED PACKET
+${selectedPacketString}
 
 CHAT HISTORY:
 ${formattedHistory}

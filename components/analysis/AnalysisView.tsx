@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Packet, Protocol, AnalysisSummary } from '../../types';
 import AiAnalysisPanel from './AiAnalysisPanel';
 import PacketTable from './PacketTable';
@@ -8,12 +8,21 @@ import { ChatIcon, ExportIcon, HttpIcon, HttpsIcon, Ipv4Icon, ArpIcon, DnsIcon, 
 
 interface AnalysisViewProps {
   packets: Packet[];
+  filteredPackets: Packet[];
   fileName: string;
   onRunAnalysis: (tierId: 'quick' | 'standard' | 'comprehensive') => void;
   analysisSummary: AnalysisSummary | null;
   isLoadingAnalysis: boolean;
   onOpenChat: () => void;
   onStartOver: () => void;
+  activeFilters: Protocol[];
+  setActiveFilters: React.Dispatch<React.SetStateAction<Protocol[]>>;
+  sourceIpFilter: string;
+  setSourceIpFilter: (value: string) => void;
+  destinationIpFilter: string;
+  setDestinationIpFilter: (value: string) => void;
+  selectedPacket: Packet | null;
+  setSelectedPacket: (packet: Packet | null) => void;
 }
 
 const protocolFilters = [Protocol.HTTP, Protocol.HTTPS, Protocol.IPv4, Protocol.ARP, Protocol.DNS];
@@ -31,18 +40,22 @@ const protocolIcons: Record<Protocol, React.FC<{ className?: string }>> = {
 
 const AnalysisView: React.FC<AnalysisViewProps> = ({ 
   packets, 
+  filteredPackets,
   fileName, 
   onRunAnalysis,
   analysisSummary,
   isLoadingAnalysis,
   onOpenChat,
-  onStartOver
+  onStartOver,
+  activeFilters,
+  setActiveFilters,
+  sourceIpFilter,
+  setSourceIpFilter,
+  destinationIpFilter,
+  setDestinationIpFilter,
+  selectedPacket,
+  setSelectedPacket
 }) => {
-  const [activeFilters, setActiveFilters] = useState<Protocol[]>([]);
-  const [selectedPacket, setSelectedPacket] = useState<Packet | null>(null);
-  const [sourceIpFilter, setSourceIpFilter] = useState('');
-  const [destinationIpFilter, setDestinationIpFilter] = useState('');
-
   const toggleFilter = (protocol: Protocol) => {
     setActiveFilters(prev =>
       prev.includes(protocol)
@@ -56,19 +69,6 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
     setSourceIpFilter('');
     setDestinationIpFilter('');
   };
-
-  const filteredPackets = useMemo(() => {
-    const sourceFilter = sourceIpFilter.trim().toLowerCase();
-    const destinationFilter = destinationIpFilter.trim().toLowerCase();
-
-    return packets.filter(packet => {
-      const protocolMatch = activeFilters.length === 0 || activeFilters.includes(packet.protocol);
-      const sourceMatch = !sourceFilter || packet.source.toLowerCase().includes(sourceFilter);
-      const destinationMatch = !destinationFilter || packet.destination.toLowerCase().includes(destinationFilter);
-
-      return protocolMatch && sourceMatch && destinationMatch;
-    });
-  }, [packets, activeFilters, sourceIpFilter, destinationIpFilter]);
   
   const handleExportCSV = () => {
     if (filteredPackets.length === 0) {
@@ -78,7 +78,6 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
 
     const headers = ['#', 'Time', 'Protocol', 'Source', 'Destination', 'Size', 'Info'];
     const rows = filteredPackets.map(p => {
-      // Sanitize info field for commas and quotes
       const info = `"${p.info.replace(/"/g, '""')}"`;
       return [p.id, p.time, p.protocol, p.source, p.destination, p.size, info].join(',');
     });

@@ -47,13 +47,14 @@ const PacketTable: React.FC<PacketTableProps> = ({ packets, onPacketSelect, sele
         <tbody>
           {packets.map((packet) => {
             const Icon = protocolIcons[packet.protocol] || null;
+            const isSelected = selectedPacketId === packet.id;
             return (
               <tr
                 key={packet.id}
                 onClick={() => onPacketSelect(packet)}
-                className={`border-b border-brand-gray-light hover:bg-brand-gray-light cursor-pointer transition-colors ${selectedPacketId === packet.id ? 'bg-brand-gray-light' : ''}`}
+                className={`border-b border-brand-gray-light hover:bg-brand-gray-light cursor-pointer transition-colors ${isSelected ? 'bg-brand-gray-light' : ''}`}
               >
-                <td className="px-3 py-3 text-white">
+                <td className={`px-3 py-3 text-white border-l-4 transition-colors ${isSelected ? 'border-brand-green' : 'border-transparent'}`}>
                   <RightArrowIcon className="w-4 h-4" />
                 </td>
                 <td className="px-3 py-3 font-medium text-white">{packet.id}</td>

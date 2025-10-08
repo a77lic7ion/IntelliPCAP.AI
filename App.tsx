@@ -1,11 +1,10 @@
 
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import UploadView from './components/UploadView';
 import AnalysisView from './components/analysis/AnalysisView';
 import ChatAssistant from './components/ChatAssistant';
-import { Packet, AnalysisSummary } from './types';
+import { Packet, AnalysisSummary, Protocol } from './types';
 import { SAMPLE_PACKETS } from './constants';
 import { runAnalysis } from './services/geminiService';
 
@@ -19,12 +18,36 @@ const App: React.FC = () => {
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+  // Lifted state from AnalysisView for global context
+  const [activeFilters, setActiveFilters] = useState<Protocol[]>([]);
+  const [selectedPacket, setSelectedPacket] = useState<Packet | null>(null);
+  const [sourceIpFilter, setSourceIpFilter] = useState('');
+  const [destinationIpFilter, setDestinationIpFilter] = useState('');
+
+  const filteredPackets = useMemo(() => {
+    const sourceFilter = sourceIpFilter.trim().toLowerCase();
+    const destinationFilter = destinationIpFilter.trim().toLowerCase();
+
+    if (packets.length === 0) return [];
+
+    return packets.filter(packet => {
+      const protocolMatch = activeFilters.length === 0 || activeFilters.includes(packet.protocol);
+      const sourceMatch = !sourceFilter || packet.source.toLowerCase().includes(sourceFilter);
+      const destinationMatch = !destinationFilter || packet.destination.toLowerCase().includes(destinationFilter);
+
+      return protocolMatch && sourceMatch && destinationMatch;
+    });
+  }, [packets, activeFilters, sourceIpFilter, destinationIpFilter]);
+
   const handleFileSelect = useCallback((file: File | 'sample') => {
-    // In a real app, you would parse the file here.
-    // For this demo, we'll just use sample data.
     setPackets(SAMPLE_PACKETS);
     setFileName(file === 'sample' ? 'sample_capture.pcap' : file.name);
-    setAnalysisSummary(null); // Reset summary on new file
+    setAnalysisSummary(null);
+    // Reset filters and selection on new file
+    setActiveFilters([]);
+    setSourceIpFilter('');
+    setDestinationIpFilter('');
+    setSelectedPacket(null);
     setView('analysis');
   }, []);
 
@@ -34,10 +57,8 @@ const App: React.FC = () => {
     try {
       const summary = await runAnalysis(tierId);
       setAnalysisSummary(summary);
-      // Fix: Added curly braces to the catch block to fix syntax error.
     } catch (error) {
       console.error("Failed to run analysis:", error);
-      // You could set an error state here to show in the UI
     } finally {
       setIsLoadingAnalysis(false);
     }
@@ -50,6 +71,11 @@ const App: React.FC = () => {
     setAnalysisSummary(null);
     setIsLoadingAnalysis(false);
     setIsChatOpen(false);
+    // Reset lifted state
+    setActiveFilters([]);
+    setSourceIpFilter('');
+    setDestinationIpFilter('');
+    setSelectedPacket(null);
   }, []);
 
   return (
@@ -61,17 +87,31 @@ const App: React.FC = () => {
         ) : (
           <AnalysisView 
             packets={packets} 
+            filteredPackets={filteredPackets}
             fileName={fileName}
             onRunAnalysis={handleRunAnalysis}
             analysisSummary={analysisSummary}
             isLoadingAnalysis={isLoadingAnalysis}
             onOpenChat={() => setIsChatOpen(true)}
             onStartOver={handleStartOver}
+            activeFilters={activeFilters}
+            setActiveFilters={setActiveFilters}
+            sourceIpFilter={sourceIpFilter}
+            setSourceIpFilter={setSourceIpFilter}
+            destinationIpFilter={destinationIpFilter}
+            setDestinationIpFilter={setDestinationIpFilter}
+            selectedPacket={selectedPacket}
+            setSelectedPacket={setSelectedPacket}
           />
         )}
       </main>
-      {/* Fix: Pass analysisSummary to ChatAssistant for context-aware responses. */}
-      <ChatAssistant isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} analysisSummary={analysisSummary} />
+      <ChatAssistant 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        analysisSummary={analysisSummary} 
+        filteredPackets={filteredPackets}
+        selectedPacket={selectedPacket}
+      />
     </div>
   );
 };

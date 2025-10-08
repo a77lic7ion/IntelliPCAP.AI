@@ -1,19 +1,19 @@
 
 
 import React, { useState, useRef, useEffect } from 'react';
-// Fix: Import AnalysisSummary type.
-import { ChatMessage, AnalysisSummary } from '../types';
+import { ChatMessage, AnalysisSummary, Packet } from '../types';
 import { getChatResponse } from '../services/geminiService';
 import { ChatIcon, SendIcon } from './common/Icons';
 
 interface ChatAssistantProps {
   isOpen: boolean;
   onClose: () => void;
-  // Fix: Add analysisSummary to props to make chat context-aware.
   analysisSummary: AnalysisSummary | null;
+  filteredPackets: Packet[];
+  selectedPacket: Packet | null;
 }
 
-const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, analysisSummary }) => {
+const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, analysisSummary, filteredPackets, selectedPacket }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'ai',
@@ -40,8 +40,7 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen, onClose, analysis
     setIsLoading(true);
 
     try {
-      // Fix: Pass analysisSummary to get a context-aware response.
-      const aiResponse = await getChatResponse(newMessages, analysisSummary);
+      const aiResponse = await getChatResponse(newMessages, analysisSummary, filteredPackets, selectedPacket);
       setMessages(prev => [
         ...prev,
         { sender: 'ai', text: aiResponse },
