@@ -40,6 +40,8 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
 }) => {
   const [activeFilters, setActiveFilters] = useState<Protocol[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<Packet | null>(null);
+  const [sourceIpFilter, setSourceIpFilter] = useState('');
+  const [destinationIpFilter, setDestinationIpFilter] = useState('');
 
   const toggleFilter = (protocol: Protocol) => {
     setActiveFilters(prev =>
@@ -49,12 +51,24 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
     );
   };
 
+  const handleClearFilters = () => {
+    setActiveFilters([]);
+    setSourceIpFilter('');
+    setDestinationIpFilter('');
+  };
+
   const filteredPackets = useMemo(() => {
-    if (activeFilters.length === 0) {
-      return packets;
-    }
-    return packets.filter(packet => activeFilters.includes(packet.protocol));
-  }, [packets, activeFilters]);
+    const sourceFilter = sourceIpFilter.trim().toLowerCase();
+    const destinationFilter = destinationIpFilter.trim().toLowerCase();
+
+    return packets.filter(packet => {
+      const protocolMatch = activeFilters.length === 0 || activeFilters.includes(packet.protocol);
+      const sourceMatch = !sourceFilter || packet.source.toLowerCase().includes(sourceFilter);
+      const destinationMatch = !destinationFilter || packet.destination.toLowerCase().includes(destinationFilter);
+
+      return protocolMatch && sourceMatch && destinationMatch;
+    });
+  }, [packets, activeFilters, sourceIpFilter, destinationIpFilter]);
   
   const handleExportCSV = () => {
     if (filteredPackets.length === 0) {
@@ -100,14 +114,14 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
           {/* Filters and Packet Table */}
           <div className="bg-brand-gray-dark p-6 rounded-lg">
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-white font-semibold mr-2">Filter by Protocol:</span>
+              <span className="text-white font-semibold mr-2 shrink-0">Filter by Protocol:</span>
               {protocolFilters.map(proto => {
                 const Icon = protocolIcons[proto];
                 return (
                   <button
                     key={proto}
                     onClick={() => toggleFilter(proto)}
-                    className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-full transition-colors ${
+                    className={`flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-full transition-colors shrink-0 ${
                       activeFilters.includes(proto)
                         ? 'bg-brand-green text-brand-dark'
                         : 'bg-brand-gray-light text-white hover:bg-opacity-70'
@@ -118,13 +132,31 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
                   </button>
                 )
               })}
-              <button onClick={() => setActiveFilters([])} className="px-3 py-1 text-sm font-semibold rounded-full bg-brand-red text-white hover:bg-opacity-80">
-                Clear Filters
+            </div>
+
+             <div className="flex flex-wrap items-center gap-2 mb-4">
+               <span className="text-white font-semibold mr-2 shrink-0">Filter by IP:</span>
+               <input
+                  type="text"
+                  placeholder="Source IP..."
+                  value={sourceIpFilter}
+                  onChange={(e) => setSourceIpFilter(e.target.value)}
+                  className="bg-brand-gray-light text-white placeholder-brand-gray-text px-3 py-1 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-green w-full sm:w-auto"
+               />
+               <input
+                  type="text"
+                  placeholder="Destination IP..."
+                  value={destinationIpFilter}
+                  onChange={(e) => setDestinationIpFilter(e.target.value)}
+                  className="bg-brand-gray-light text-white placeholder-brand-gray-text px-3 py-1 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-green w-full sm:w-auto"
+               />
+              <button onClick={handleClearFilters} className="px-3 py-1 text-sm font-semibold rounded-full bg-brand-red text-white hover:bg-opacity-80 shrink-0">
+                Clear All Filters
               </button>
               <div className="flex-grow"></div> {/* Spacer */}
               <button 
                 onClick={handleExportCSV} 
-                className="flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-full bg-brand-gray-light text-white hover:bg-opacity-70 transition-colors"
+                className="flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-full bg-brand-gray-light text-white hover:bg-opacity-70 transition-colors shrink-0"
                 title="Export filtered data to CSV"
               >
                 <ExportIcon className="w-4 h-4" />
@@ -134,7 +166,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
             
             <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
               <div>
-                  <h2 className="text-xl text-white font-bold">Packets ({packets.length})</h2>
+                  <h2 className="text-xl text-white font-bold">Packets ({filteredPackets.length} of {packets.length})</h2>
                   <p className="text-sm text-brand-gray-text">{fileName}</p>
               </div>
               {analysisSummary && (
@@ -154,7 +186,6 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
           
           {/* Details Section */}
           <div className="mt-6">
-            {/* FIX: Changed `summary` to `analysisSummary` to pass the correct prop. */}
             <DetailsPanels selectedPacket={selectedPacket} summary={analysisSummary} />
           </div>
         </div>
