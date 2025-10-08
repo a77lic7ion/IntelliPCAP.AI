@@ -2,11 +2,15 @@
 import React from 'react';
 import { LogoIcon } from './common/Icons';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onLogoClick: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onLogoClick }) => {
   return (
     <header className="bg-brand-dark border-b border-brand-gray-light">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
+        <div onClick={onLogoClick} className="flex items-center space-x-4 cursor-pointer">
           <LogoIcon className="h-6 w-6 text-brand-green" />
           <h1 className="text-xl font-bold text-white">IntelliPCAP.AI</h1>
         </div>

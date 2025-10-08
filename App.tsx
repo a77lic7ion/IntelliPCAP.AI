@@ -39,9 +39,9 @@ const App: React.FC = () => {
     });
   }, [packets, activeFilters, sourceIpFilter, destinationIpFilter]);
 
-  const handleFileSelect = useCallback((file: File | 'sample') => {
+  const handleFileSelect = useCallback((file: File) => {
     setPackets(SAMPLE_PACKETS);
-    setFileName(file === 'sample' ? 'sample_capture.pcap' : file.name);
+    setFileName(file.name);
     setAnalysisSummary(null);
     // Reset filters and selection on new file
     setActiveFilters([]);
@@ -80,7 +80,7 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-brand-dark min-h-screen text-white">
-      <Header />
+      <Header onLogoClick={handleStartOver} />
       <main>
         {view === 'upload' ? (
           <UploadView onFileSelect={handleFileSelect} />
