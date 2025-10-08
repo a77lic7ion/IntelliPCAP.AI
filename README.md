@@ -3,7 +3,7 @@
 
 IntelliPCAP.AI is a modern, AI-powered web application that transforms raw packet captures into readable, actionable insights in seconds. It serves as an intuitive, fast, and visual alternative to traditional tools like Wireshark, designed for cybersecurity professionals, ethical hackers, and IT teams.
 
-![IntelliPCAP.AI Screenshot](https://storage.googleapis.com/proud-booth-3333/intellipcap_screenshot.png)
+
 
 ## ✨ Key Features
 
