@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback } from 'react';
 import Header from './components/Header';
 import UploadView from './components/UploadView';
@@ -33,12 +34,22 @@ const App: React.FC = () => {
     try {
       const summary = await runAnalysis(tierId);
       setAnalysisSummary(summary);
+      // Fix: Added curly braces to the catch block to fix syntax error.
     } catch (error) {
       console.error("Failed to run analysis:", error);
       // You could set an error state here to show in the UI
     } finally {
       setIsLoadingAnalysis(false);
     }
+  }, []);
+
+  const handleStartOver = useCallback(() => {
+    setView('upload');
+    setPackets([]);
+    setFileName('');
+    setAnalysisSummary(null);
+    setIsLoadingAnalysis(false);
+    setIsChatOpen(false);
   }, []);
 
   return (
@@ -55,10 +66,12 @@ const App: React.FC = () => {
             analysisSummary={analysisSummary}
             isLoadingAnalysis={isLoadingAnalysis}
             onOpenChat={() => setIsChatOpen(true)}
+            onStartOver={handleStartOver}
           />
         )}
       </main>
-      <ChatAssistant isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      {/* Fix: Pass analysisSummary to ChatAssistant for context-aware responses. */}
+      <ChatAssistant isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} analysisSummary={analysisSummary} />
     </div>
   );
 };

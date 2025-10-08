@@ -1,9 +1,10 @@
+
 import React, { useState, useMemo } from 'react';
 import { Packet, Protocol, AnalysisSummary } from '../../types';
 import AiAnalysisPanel from './AiAnalysisPanel';
 import PacketTable from './PacketTable';
 import DetailsPanels from './DetailsPanels';
-import { ChatIcon, ExportIcon, HttpIcon, HttpsIcon, Ipv4Icon, ArpIcon, DnsIcon, TcpIcon, UdpIcon } from '../common/Icons';
+import { ChatIcon, ExportIcon, HttpIcon, HttpsIcon, Ipv4Icon, ArpIcon, DnsIcon, TcpIcon, UdpIcon, StartOverIcon } from '../common/Icons';
 
 interface AnalysisViewProps {
   packets: Packet[];
@@ -12,6 +13,7 @@ interface AnalysisViewProps {
   analysisSummary: AnalysisSummary | null;
   isLoadingAnalysis: boolean;
   onOpenChat: () => void;
+  onStartOver: () => void;
 }
 
 const protocolFilters = [Protocol.HTTP, Protocol.HTTPS, Protocol.IPv4, Protocol.ARP, Protocol.DNS];
@@ -33,7 +35,8 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
   onRunAnalysis,
   analysisSummary,
   isLoadingAnalysis,
-  onOpenChat
+  onOpenChat,
+  onStartOver
 }) => {
   const [activeFilters, setActiveFilters] = useState<Protocol[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<Packet | null>(null);
@@ -129,9 +132,21 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
               </button>
             </div>
             
-            <div className="mb-4">
-                <h2 className="text-xl text-white font-bold">Packets ({packets.length})</h2>
-                <p className="text-sm text-brand-gray-text">{fileName}</p>
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <div>
+                  <h2 className="text-xl text-white font-bold">Packets ({packets.length})</h2>
+                  <p className="text-sm text-brand-gray-text">{fileName}</p>
+              </div>
+              {analysisSummary && (
+                  <button
+                      onClick={onStartOver}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-brand-red text-white hover:bg-opacity-80 transition-all"
+                      aria-label="Start a new analysis"
+                  >
+                      <StartOverIcon className="w-5 h-5" />
+                      Start Over
+                  </button>
+              )}
             </div>
 
             <PacketTable packets={filteredPackets} onPacketSelect={setSelectedPacket} selectedPacketId={selectedPacket?.id} />

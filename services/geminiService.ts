@@ -1,81 +1,138 @@
+import { GoogleGenAI, Type } from '@google/genai';
 import { AnalysisSummary, Protocol, ChatMessage } from '../types';
 import { SAMPLE_PACKETS } from '../constants';
 
-// This is a mock service. In a real application, you would use @google/genai here.
-// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Fix: Initialize GoogleGenAI client as per guidelines.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-export const runAnalysis = async (tierId: 'quick' | 'standard' | 'comprehensive'): Promise<AnalysisSummary> => {
-    console.log(`Running ${tierId} analysis...`);
-    await delay(2500);
-
-    const summary: AnalysisSummary = {
-        topProtocol: Protocol.HTTP,
-        topProtocolPercentage: 69,
-        generatedAt: new Date().toLocaleString('en-US', {
-            month: 'numeric',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        }),
-        analyzedPackets: 10000,
-        totalPackets: 10000,
-        threatsDetected: {
-            total: 6669,
-            high: 4,
-            medium: 665,
-            low: 6000,
+const analysisSummarySchema = {
+    type: Type.OBJECT,
+    properties: {
+      topProtocol: { type: Type.STRING, enum: Object.values(Protocol) },
+      topProtocolPercentage: { type: Type.NUMBER },
+      generatedAt: { type: Type.STRING, description: "The timestamp when the analysis was generated, e.g., '6/21/2024, 5:30 PM'" },
+      analyzedPackets: { type: Type.INTEGER },
+      totalPackets: { type: Type.INTEGER },
+      threatsDetected: {
+        type: Type.OBJECT,
+        properties: {
+          total: { type: Type.INTEGER },
+          high: { type: Type.INTEGER },
+          medium: { type: Type.INTEGER },
+          low: { type: Type.INTEGER },
         },
-        keyFindings: [
-            "Analyzed 10000 packets in this capture",
-            "Primary protocol: HTTP (6927 packets, 69%)",
-            "Detected 6669 potential security threats (4 high, 665 medium, 0 low severity)",
-        ],
-        protocolDistribution: [
-            { name: 'HTTP', value: 6927 },
-            { name: 'HTTPS', value: 1500 },
-            { name: 'DNS', value: 800 },
-            { name: 'TCP', value: 450 },
-            { name: 'UDP', value: 200 },
-            { name: 'Other', value: 123 },
-        ],
-        recommendations: [
-            "High severity threats detected - immediate investigation recommended",
-            "Web traffic detected - HTTP/HTTPS connections present",
-            "DNS queries and responses detected - domain lookups present",
-            "Data transfer volumes appear normal for this network size",
-        ]
-    };
-
-    return summary;
+        required: ['total', 'high', 'medium', 'low'],
+      },
+      keyFindings: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+      },
+      protocolDistribution: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            value: { type: Type.INTEGER },
+          },
+          required: ['name', 'value'],
+        },
+      },
+      recommendations: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+      },
+    },
+    required: [
+      'topProtocol', 'topProtocolPercentage', 'generatedAt', 'analyzedPackets',
+      'totalPackets', 'threatsDetected', 'keyFindings', 'protocolDistribution',
+      'recommendations'
+    ],
 };
 
-export const getChatResponse = async (history: ChatMessage[]): Promise<string> => {
-    console.log("Getting chat response for history:", history);
-    await delay(2000);
 
-    const lastUserMessage = history[history.length - 1]?.text.toLowerCase() || '';
+export const runAnalysis = async (tierId: 'quick' | 'standard' | 'comprehensive'): Promise<AnalysisSummary> => {
+    console.log(`Running ${tierId} analysis with Gemini...`);
 
-    if (lastUserMessage.includes('risks')) {
-        return `Based on the analysis, the primary risks are:
+    const packetsToAnalyze = SAMPLE_PACKETS;
+    const packetsString = JSON.stringify(packetsToAnalyze.slice(0, 50), null, 2); // Use a sample for prompt brevity
 
-**High-Severity Threats:**
-The 4 high-severity threats indicate potential active attacks or significant vulnerabilities. These require immediate investigation. They could be related to malware communication, exploit attempts, or data exfiltration.
+    const prompt = `Analyze the following sample of packet capture data and provide a summary. The total packet count is ${packetsToAnalyze.length}.
+The data contains a list of network packets with properties like id, time, protocol, source, destination, size, and info.
+Based on the analysis, generate a summary that includes:
+- The top protocol and its percentage.
+- The time of generation (current time, e.g., '6/21/2024, 5:30 PM').
+- The number of packets analyzed (which is ${packetsToAnalyze.length}) and the total number of packets (which is ${packetsToAnalyze.length}).
+- A breakdown of detected threats by severity (high, medium, low).
+- A list of 3-5 key findings from the analysis.
+- The distribution of traffic across the top 5 protocols plus an 'Other' category.
+- A list of 3-4 actionable recommendations for improving network security.
 
-**Unencrypted HTTP Traffic:**
-A large portion of the traffic (69%) is unencrypted HTTP. This exposes sensitive information like login credentials or personal data to anyone on the network.
+Here is a sample of the packet data:
+${packetsString}
 
-**Recommendations:**
-- **Investigate High-Severity Threats:** Isolate affected systems and analyze the specific packets flagged as high-severity.
-- **Enforce HTTPS:** Migrate all web services to use HTTPS to encrypt data in transit.
-- **Network Segmentation:** Implement network segmentation to limit the impact of a potential breach.
-- **Continuous Monitoring:** Implement continuous network monitoring to detect and respond to threats in real-time.
+The analysis tier is "${tierId}". Adjust the depth and detail of your analysis accordingly:
+- quick: Basic overview, focus on high-level statistics.
+- standard: More detailed analysis, identify common anomalies.
+- comprehensive: In-depth analysis, correlate events, and provide detailed threat assessments.
 
-This network capture indicates a serious security situation. Prioritize the actions above to mitigate the risks. Let me know if you want to dive deeper into any of these areas.`;
+Return the response in a JSON format matching the specified schema. For 'generatedAt', use the current date and time.
+`;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: analysisSummarySchema,
+            },
+        });
+
+        const jsonStr = response.text.trim();
+        const summary: AnalysisSummary = JSON.parse(jsonStr);
+        return summary;
+    } catch (error) {
+        console.error("Error calling Gemini API for analysis:", error);
+        throw new Error("Failed to get analysis from Gemini API.");
     }
+};
 
-    return "I am a network assistant powered by Gemini. I can help you analyze the packet capture data. How can I assist you?";
+export const getChatResponse = async (history: ChatMessage[], analysisSummary: AnalysisSummary | null): Promise<string> => {
+    console.log("Getting chat response from Gemini for history:", history);
+    
+    const formattedHistory = history.map(msg => `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.text}`).join('\n');
+    const summaryString = analysisSummary ? JSON.stringify(analysisSummary, null, 2) : "No analysis has been run yet.";
+
+    const systemInstruction = `You are a helpful and knowledgeable Network Admin Assistant powered by Gemini. 
+You are assisting a user who is analyzing a packet capture file. 
+Your role is to answer questions about the network traffic, security risks, and provide recommendations based on the data.
+Be concise and clear in your answers. Use markdown for formatting, like **bolding** for emphasis.
+The user's chat history is provided below. Respond to the last user message.
+Use the provided analysis summary as the context for your answers.`;
+
+    const contents = `
+CONTEXT: ANALYSIS SUMMARY
+\`\`\`json
+${summaryString}
+\`\`\`
+
+CHAT HISTORY:
+${formattedHistory}
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: contents,
+            config: {
+                systemInstruction: systemInstruction,
+            },
+        });
+
+        return response.text;
+    } catch (error) {
+        console.error("Error calling Gemini API for chat:", error);
+        return "Sorry, I encountered an error while trying to respond. Please try again.";
+    }
 };

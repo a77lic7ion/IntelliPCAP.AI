@@ -11,7 +11,8 @@
   "dependencies": {
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "@google/genai": "^1.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
