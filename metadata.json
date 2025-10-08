@@ -1,0 +1,5 @@
+{
+  "name": "IntelliPCAP.AI - AI-Powered Network Packet Analyzer",
+  "description": "A modern, AI-powered web app that turns raw packet captures into readable insights in seconds. An intuitive, fast, and visual alternative to traditional tools like Wireshark for cybersecurity professionals, ethical hackers, and IT teams.",
+  "requestFramePermissions": []
+}
